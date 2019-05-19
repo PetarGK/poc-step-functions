@@ -16,6 +16,8 @@ functions:
     handler: handler.add
   double:
     handler: handler.double  
+  doubleBigNumber:
+    handler: handler.doubleBigNumber
 
 stepFunctions:
   stateMachines:
@@ -28,8 +30,27 @@ stepFunctions:
           Add:
             Type: Task
             Resource: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-add
-            Next: Double
+            Next: IsBigNumber
+          IsBigNumber:
+            Type: Choice
+            Choices:
+              - Variable: $
+                NumericGreaterThan: 50
+                Next: DoubleBigNumber
+            Default: Double
           Double:
             Type: Task
             Resource: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-double  
             End: true    
+            Retry:
+              - ErrorEquals: [NumberIsTooBig]
+                MaxAttempts: 0
+              - ErrorEquals: [States.ALL]
+                MaxAttempts: 3
+            Catch:
+              - ErrorEquals: [NumberIsTooBig]
+                Next: DoubleBigNumber
+          DoubleBigNumber:
+            Type: Task
+            Resource: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-doubleBigNumber
+            End: true
